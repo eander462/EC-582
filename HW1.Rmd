@@ -1,0 +1,54 @@
+---
+title: "HW1"
+output: html_document
+date: '2023-03-30'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Load packages
+pacman::p_load(tidyverse, magrittr)
+```
+
+```{r}
+# Set true values of parameters
+y = c(1, 1)
+sigma = matrix(diag(c(0.25^2,1)), ncol = 2)
+theta = y[1]/y[2]
+
+# Simulating parameters
+n = 50
+B = 10000
+
+# Set seed
+set.seed(123)
+
+# Initialize simulation vectors
+sim.theta = rep(0, B)
+sim.mu1 = rep(0,B)
+sim.mu2 = rep(0, B)
+
+# Montecarlo loop
+for (sim in 1:B) {
+  # Simulate data
+  sim.y = tibble(y1 = rnorm(n, mean = y[1], sd = sigma[1,1]), y2 = rnorm(n, mean = y[2], sd = sigma[2,2]))
+  mu_hat = c(mean(sim.y$y1), mean(sim.y$y2))
+  sigma_hat = with(sim.y, c(sd(y1), rep(cov(y1, y2), 2), sd(y2))) |> matrix(ncol = 2)
+  
+  # Parameter of interest
+  theta_hat = mu_hat[1]/mu_hat[2]
+  
+  # Store the simulated values 
+  sim.theta[sim] = theta_hat
+  sim.mu1[sim] = mu_hat[1]
+  sim.mu2[sim] = mu_hat[2]
+}
+
+# Calculate the mean and standared error of theta
+```
+
+
+
