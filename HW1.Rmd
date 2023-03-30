@@ -13,6 +13,8 @@ knitr::opts_chunk$set(echo = TRUE)
 pacman::p_load(tidyverse, magrittr)
 ```
 
+###  Question 1
+
 ```{r}
 # Set true values of parameters
 y = c(1, 1)
@@ -31,7 +33,7 @@ sim.theta = rep(0, B)
 sim.mu1 = rep(0,B)
 sim.mu2 = rep(0, B)
 
-# Montecarlo loop
+# Monte Carlo loop
 for (sim in 1:B) {
   # Simulate data
   sim.y = tibble(y1 = rnorm(n, mean = y[1], sd = sigma[1,1]), y2 = rnorm(n, mean = y[2], sd = sigma[2,2]))
@@ -47,7 +49,12 @@ for (sim in 1:B) {
   sim.mu2[sim] = mu_hat[2]
 }
 
-# Calculate the mean and standared error of theta
+# Calculate the mean and standard error of theta_hat
+mean_theta_hat = mean(sim.theta); mean_theta_hat
+se_theta_hat = sd(sim.theta); se_theta_hat
+
+# Confidence interval of theta_hat
+mean_theta_hat + c(-se_theta_hat, se_theta_hat)*1.96
 ```
 
 
