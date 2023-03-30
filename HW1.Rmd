@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 # Load packages
-pacman::p_load(tidyverse, magrittr)
+pacman::p_load(tidyverse, bootstrap)
 ```
 
 ###  Question 1 Monte Carlo Simulation
@@ -34,6 +34,7 @@ set.seed(123)
 sim.theta = rep(0, B)
 sim.mu1 = rep(0,B)
 sim.mu2 = rep(0, B)
+sim.sigma = matrix(0, B, 3)
 
 # Monte Carlo loop
 for (sim in 1:B) {
@@ -41,6 +42,7 @@ for (sim in 1:B) {
   sim.y = tibble(y1 = rnorm(n, mean = y_true[1], sd = sigma[1,1]),
                  y2 = rnorm(n, mean = y_true[2], sd = sigma[2,2]))
   mu_hat = c(mean(sim.y$y1), mean(sim.y$y2))
+  sigma_hat = with(sim.y, c(sd(y1), cov(y1, y2), sd(y2)))
 
   # Parameter of interest
   theta_hat = mu_hat[1]/mu_hat[2]
@@ -49,6 +51,7 @@ for (sim in 1:B) {
   sim.theta[sim] = theta_hat
   sim.mu1[sim] = mu_hat[1]
   sim.mu2[sim] = mu_hat[2]
+  sim.sigma[sim,] = sigma_hat
 }
 
 # Calculate the mean and standard error of theta_hat
@@ -57,6 +60,9 @@ se_theta_hat = sd(sim.theta); se_theta_hat
 
 # Confidence interval of theta_hat
 mean_theta_hat + c(-se_theta_hat, se_theta_hat)*1.96
+
+# Var cov matrix
+sigma_hat = c(mean(sim.sigma[,1]), rep(mean(sim.sigma[,2]), 2), mean(sim.sigma[,3])) |> matrix(nrow = 2)
 ```
 
 ### Question 2
@@ -90,8 +96,8 @@ $$
 We already calculated the $\hat{V}_{\hat{\theta}}$ in part 1, so we just need to enumerate $g(\theta)$
 
 ```{r}
-g_mu_hat = c(1/y[1], -y[1]/y[2])
-varhat_theta_hat = g_mu_hat%*%se_theta_hat%*%t(g_mu_hat)
+g_mu_hat = c(1/y_true[1], -y_true[1]/y_true[2]) |> matrix()
+varhat_theta_hat = g_mu_hat%*%se_theta_hat%*%t(g_mu_hat) |> diag()
 ```
 
 
@@ -99,7 +105,8 @@ varhat_theta_hat = g_mu_hat%*%se_theta_hat%*%t(g_mu_hat)
 
 ```{r}
 # Simulated data
-y_sim = tibble(y1 = rnorm(n, mean = y_true[1], sd = sigma[1,1]), y2 = rnorm(n, mean = y_true[2], sd = sigma[2,2]))
+y_sim = tibble(y1 = rnorm(n, mean = y_true[1], sd = sigma[1,1]), 
+               y2 = rnorm(n, mean = y_true[2], sd = sigma[2,2]))
 
 # Initialize values
 n = nrow(y_sim)
@@ -125,14 +132,45 @@ for (i in 1:n){
 
 # Jackknife standard error
 jack_mean = mean(jack_theta)
-jack_se = ((n-1)/n)*sum((jack_mean - theta)^2);jack_se
+jack_se = ((n-1)/n)*sum((jack_theta - theta)^2);jack_se 
 
 # Confidence interval
-jack_mean + c(-jack_se, jack_se)*1.96
+jack_mean + c(-jack_se, jack_se)*1.96 
 
 ```
 
+### Question 4 NonParametric Bootstrap
+\
+```{r}
+# Initialize necessary vectors
+boot_theta = rep(0, n)
+list_boot_theta = vector('list', 5) # empty list to put results from different seeds into
 
+# Bootstrap loop
+# Outside loop is to loop over the different seeds
+for (seed in 123:127){
+  set.seed(seed)
+  y_sim = tibble(y1 = rnorm(n, mean = y_true[1], sd = sigma[1,1]), 
+                 y2 = rnorm(n, mean = y_true[2], sd = sigma[2,2]))
+
+  # Inside loop is bootstrapping
+  for (i in 1:B){
+    # Get bootstrap sample
+    boot_samp = sample(y_sim, n, replace = TRUE)
+    
+    # Get parameters
+    mu_hat = c(mean(boot_samp$y1), mean(boot_samp$y2))
+    
+    # Parameter of interest
+    boot_theta[i] = mu_hat[1]/mu_hat[2]
+  }
+  list_boot_theta[[seed-122]] = boot_theta # Subtract 122 so the list indexes from 1
+}
+
+# Parameter of interest for each seed
+boot_theta_hat = sapply(1:5, function(i) {mean(list_boot_theta[[i]])})
+boot_se_theta_hat = sapply(1:5, function(i) {sd(list_boot_theta[[i]])})
+```
 
 
 
