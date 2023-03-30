@@ -1,6 +1,8 @@
 ---
 title: "HW1"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 date: '2023-03-30'
 ---
 
@@ -13,13 +15,13 @@ knitr::opts_chunk$set(echo = TRUE)
 pacman::p_load(tidyverse, magrittr)
 ```
 
-###  Question 1
+###  Question 1 Monte Carlo Simulation
 
 ```{r}
 # Set true values of parameters
-y = c(1, 1)
+y_true = c(1, 1)
 sigma = matrix(diag(c(0.25^2,1)), ncol = 2)
-theta = y[1]/y[2]
+theta = y_true[1]/y_true[2]
 
 # Simulating parameters
 n = 50
@@ -36,10 +38,10 @@ sim.mu2 = rep(0, B)
 # Monte Carlo loop
 for (sim in 1:B) {
   # Simulate data
-  sim.y = tibble(y1 = rnorm(n, mean = y[1], sd = sigma[1,1]), y2 = rnorm(n, mean = y[2], sd = sigma[2,2]))
+  sim.y = tibble(y1 = rnorm(n, mean = y_true[1], sd = sigma[1,1]),
+                 y2 = rnorm(n, mean = y_true[2], sd = sigma[2,2]))
   mu_hat = c(mean(sim.y$y1), mean(sim.y$y2))
-  sigma_hat = with(sim.y, c(sd(y1), rep(cov(y1, y2), 2), sd(y2))) |> matrix(ncol = 2)
-  
+
   # Parameter of interest
   theta_hat = mu_hat[1]/mu_hat[2]
   
@@ -56,6 +58,90 @@ se_theta_hat = sd(sim.theta); se_theta_hat
 # Confidence interval of theta_hat
 mean_theta_hat + c(-se_theta_hat, se_theta_hat)*1.96
 ```
+
+### Question 2
+
+Theta is defined as $\theta = \frac{\mu_1}{\mu_2} = f(\mu)$. To use the delta method, we take the derivative of $\theta$ in therms of $\mu_1 \text{ and } \mu_2$.
+
+$$
+g(\mu) = \frac{\partial f(\mu)}{\partial\mu} = \left(\begin{array}{c}
+\frac{\partial f(\mu)}{\partial \mu_1}  \\
+\frac{\partial f(\mu)}{\partial \mu_2}  
+\end{array}
+\right) = \left(\begin{array}{c}
+\frac{1}{\mu_2} \\
+\frac{-\mu_1}{\mu_2^2}
+\end{array}
+\right)
+$$
+
+Using this, we can calculate the variance as
+
+$$
+\widehat{\mathrm{var}}(\hat{\theta}) = g(\hat{\theta})'\hat{V}_{\hat{\theta}}g(\hat{\theta})
+$$
+
+So the standard error is
+
+$$
+\widehat{\mathrm{se}}(\hat{\mu}) = \sqrt{\widehat{\mathrm{var}}(\hat{\theta})}
+$$
+
+We already calculated the $\hat{V}_{\hat{\theta}}$ in part 1, so we just need to enumerate $g(\theta)$
+
+```{r}
+g_mu_hat = c(1/y[1], -y[1]/y[2])
+varhat_theta_hat = g_mu_hat%*%se_theta_hat%*%t(g_mu_hat)
+```
+
+
+### Question 3 Jackknife Method
+
+```{r}
+# Simulated data
+y_sim = tibble(y1 = rnorm(n, mean = y_true[1], sd = sigma[1,1]), y2 = rnorm(n, mean = y_true[2], sd = sigma[2,2]))
+
+# Initialize values
+n = nrow(y_sim)
+jack_theta = rep(0, n)
+
+# Set seed
+set.seed(123)
+
+# Jackknife loop
+for (i in 1:n){
+  # Selects all the data except the one observation we're leaving out
+  temp_data = y_sim[-i,]
+  
+  # Calculate the parameters
+  mu_hat = c(mean(temp_data$y1), mean(temp_data$y2))
+
+  # Parameter of interest
+  theta_hat = mu_hat[1]/mu_hat[2]
+
+  # Store the parameter
+  jack_theta[i] = theta_hat
+}
+
+# Jackknife standard error
+jack_mean = mean(jack_theta)
+jack_se = ((n-1)/n)*sum((jack_mean - theta)^2);jack_se
+
+# Confidence interval
+jack_mean + c(-jack_se, jack_se)*1.96
+
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
