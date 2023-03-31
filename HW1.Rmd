@@ -161,7 +161,7 @@ for (seed in 123:127){
   # Inside loop is bootstrapping
   for (i in 1:B){
     # Get bootstrap sample
-    idx = sample(n, replace = TRUE)
+    idx = sample(n, replace = TRUE) # idk stands for index
     boot_samp = y_sim[idx,]
     
     # Get parameters
@@ -182,7 +182,7 @@ boot_se_theta_hat = sapply(1:5, function(i) {sd(list_boot_theta[[i]])});boot_se_
 sapply(1:5, function(i){boot_theta_hat[[i]] + c(-boot_se_theta_hat[[i]], boot_se_theta_hat[[i]])*1.96}) # CIs are read top to bottom. Going left to right are the five samples from 5 different seeds
 ```
 
-To calculate the other CIs, we will use the bootstrap package
+To calculate the other CIs, we will use the boot package
 
 ```{r}
 # This is a function to get the parameter given a bootstrapped sample
@@ -200,7 +200,7 @@ for (seed in 123:127) {
   set.seed(seed)
   y_sim = tibble(y1 = rnorm(n, mean = y_true[1], sd = sigma[1,1]), 
                  y2 = rnorm(n, mean = y_true[2], sd = sigma[2,2]))
-  theta.boot = boot(y_sim, statistic=fun_theta,R=10000)
+  theta.boot = boot(y_sim, statistic = fun_theta, R = 10000)
   
   list_boot_theta_ci[[seed-122]] = theta.boot
 }
@@ -213,7 +213,7 @@ boot.ci(list_boot_theta_ci[[3]], conf=0.95, type=c("norm", "perc", "bca"))
 boot.ci(list_boot_theta_ci[[4]], conf=0.95, type=c("norm", "perc", "bca"))
 boot.ci(list_boot_theta_ci[[5]], conf=0.95, type=c("norm", "perc", "bca"))
 
-# The normal CI is not quite the same as my manual one, but close enough I think
+# The normal CI is not quite the same as my manual one, but close enough
 
 ```
 
