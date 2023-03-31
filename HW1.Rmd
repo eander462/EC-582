@@ -170,6 +170,44 @@ for (seed in 123:127){
 # Parameter of interest for each seed
 boot_theta_hat = sapply(1:5, function(i) {mean(list_boot_theta[[i]])})
 boot_se_theta_hat = sapply(1:5, function(i) {sd(list_boot_theta[[i]])})
+
+# Normal CI
+sapply(1:5, function(i){boot_theta_hat[[i]] + c(-boot_se_theta_hat[[i]], boot_se_theta_hat[[i]])*1.96}) # CIs are read top to bottom. Going left to right are the five samples from 5 different seeds
+```
+
+To calculate the other CIs, we will use the bootstrap package
+
+```{r}
+# This is a function to get the parameter given a bootstrapped sample
+fun_theta = function(x, i){
+  temp_data = x[i,]
+  boot_theta = mean(temp_data$y1)/mean(temp_data$y2)
+  return(boot_theta)
+}
+
+# Initialize empty list for the result from the five seeds
+list_boot_theta_ci = vector('list', 5)
+
+# Loop over the seeds again
+for (seed in 123:127) {
+  set.seed(seed)
+  y_sim = tibble(y1 = rnorm(n, mean = y_true[1], sd = sigma[1,1]), 
+                 y2 = rnorm(n, mean = y_true[2], sd = sigma[2,2]))
+  theta.boot = boot(y_sim, statistic=fun_theta,R=10000)
+  
+  list_boot_theta_ci[[seed-122]] = theta.boot
+}
+
+# All the confidence intervals
+# Im not doing this in a loop because it takes away the nice formatting of the CIs
+boot.ci(list_boot_theta_ci[[1]], conf=0.95, type=c("norm", "perc", "bca"))
+boot.ci(list_boot_theta_ci[[2]], conf=0.95, type=c("norm", "perc", "bca"))
+boot.ci(list_boot_theta_ci[[3]], conf=0.95, type=c("norm", "perc", "bca"))
+boot.ci(list_boot_theta_ci[[4]], conf=0.95, type=c("norm", "perc", "bca"))
+boot.ci(list_boot_theta_ci[[5]], conf=0.95, type=c("norm", "perc", "bca"))
+
+# The normal CI is not quite the same as my manual one, but close enough I think
+
 ```
 
 
