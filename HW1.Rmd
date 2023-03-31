@@ -97,7 +97,8 @@ We already calculated the $\hat{V}_{\hat{\theta}}$ in part 1, so we just need to
 
 ```{r}
 g_mu_hat = c(1/y_true[1], -y_true[1]/y_true[2]) |> matrix()
-varhat_theta_hat = g_mu_hat%*%se_theta_hat%*%t(g_mu_hat) |> diag()
+varhat_theta_hat = t(g_mu_hat)%*%sigma_hat%*%g_mu_hat
+sehat_theta_hat = sqrt(varhat_theta_hat) # This isn't right
 ```
 
 
@@ -210,6 +211,11 @@ boot.ci(list_boot_theta_ci[[5]], conf=0.95, type=c("norm", "perc", "bca"))
 
 ```
 
+### Question 5 Parametric Bootstrap
+
+```{r}
+
+```
 
 
 
