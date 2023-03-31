@@ -7,12 +7,13 @@ date: '2023-03-30'
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, 
+                      cache = TRUE)
 ```
 
 ```{r}
 # Load packages
-pacman::p_load(tidyverse, bootstrap)
+pacman::p_load(tidyverse, boot)
 ```
 
 ###  Question 1 Monte Carlo Simulation
@@ -141,36 +142,41 @@ jack_mean + c(-jack_se, jack_se)*1.96
 ```
 
 ### Question 4 NonParametric Bootstrap
-\
-```{r}
-# Initialize necessary vectors
-boot_theta = rep(0, n)
-list_boot_theta = vector('list', 5) # empty list to put results from different seeds into
 
+```{r}
+# Bootstrap parameters
+n = 50
+B = 10000
+
+# Initialize necessary vectors
+boot_theta = rep(0, B)
+list_boot_theta = vector('list', 5) # empty list to put results from different seeds into
+boot_test = vector('list', 5)
 # Bootstrap loop
 # Outside loop is to loop over the different seeds
 for (seed in 123:127){
   set.seed(seed)
   y_sim = tibble(y1 = rnorm(n, mean = y_true[1], sd = sigma[1,1]), 
                  y2 = rnorm(n, mean = y_true[2], sd = sigma[2,2]))
-
   # Inside loop is bootstrapping
   for (i in 1:B){
     # Get bootstrap sample
-    boot_samp = sample(y_sim, n, replace = TRUE)
+    idx = sample(n, replace = TRUE)
+    boot_samp = y_sim[idx,]
     
     # Get parameters
     mu_hat = c(mean(boot_samp$y1), mean(boot_samp$y2))
     
     # Parameter of interest
     boot_theta[i] = mu_hat[1]/mu_hat[2]
+    boot_test[[i]] = boot_samp
   }
   list_boot_theta[[seed-122]] = boot_theta # Subtract 122 so the list indexes from 1
 }
 
 # Parameter of interest for each seed
 boot_theta_hat = sapply(1:5, function(i) {mean(list_boot_theta[[i]])})
-boot_se_theta_hat = sapply(1:5, function(i) {sd(list_boot_theta[[i]])})
+boot_se_theta_hat = sapply(1:5, function(i) {sd(list_boot_theta[[i]])});boot_se_theta_hat
 
 # Normal CI
 sapply(1:5, function(i){boot_theta_hat[[i]] + c(-boot_se_theta_hat[[i]], boot_se_theta_hat[[i]])*1.96}) # CIs are read top to bottom. Going left to right are the five samples from 5 different seeds
