@@ -43,7 +43,7 @@ for (sim in 1:B) {
   sim.y = tibble(y1 = rnorm(n, mean = y_true[1], sd = sigma[1,1]),
                  y2 = rnorm(n, mean = y_true[2], sd = sigma[2,2]))
   mu_hat = c(mean(sim.y$y1), mean(sim.y$y2))
-  sigma_hat = with(sim.y, c(sd(y1), cov(y1, y2), sd(y2)))
+  sigma_hat = with(sim.y, c(sd(y1), cov(y1, y2), sd(y2)))/n
 
   # Parameter of interest
   theta_hat = mu_hat[1]/mu_hat[2]
