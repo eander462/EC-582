@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE,
 
 ```{r}
 # Load packages
-pacman::p_load(tidyverse, boot)
+pacman::p_load(tidyverse, boot, car)
 ```
 
 ###  Question 1 Monte Carlo Simulation
@@ -99,7 +99,22 @@ We already calculated the $\hat{V}_{\hat{\theta}}$ in part 1, so we just need to
 ```{r}
 g_mu_hat = c(1/y_true[1], -y_true[1]/y_true[2]) |> matrix()
 varhat_theta_hat = t(g_mu_hat)%*%sigma_hat%*%g_mu_hat
-sehat_theta_hat = sqrt(varhat_theta_hat) # This isn't right
+sehat_theta_hat = sqrt(varhat_theta_hat) 
+```
+
+Now check with the delta_method function from the car package.
+
+```{r}
+# Set names of g_mu_hat
+names(g_mu_hat) = c("mu1", "mu2")
+rownames(g_mu_hat) = names(g_mu_hat)
+
+# String for the expression of interest
+f_string = "mu1 / mu2"
+
+# Delta method
+dm = car::deltaMethod(g_mu_hat, f_string, sigma_hat)
+dm$SE # Exact match for the manual computation
 ```
 
 
@@ -158,6 +173,7 @@ for (seed in 123:127){
   set.seed(seed)
   y_sim = tibble(y1 = rnorm(n, mean = y_true[1], sd = sigma[1,1]), 
                  y2 = rnorm(n, mean = y_true[2], sd = sigma[2,2]))
+  
   # Inside loop is bootstrapping
   for (i in 1:B){
     # Get bootstrap sample
@@ -220,10 +236,52 @@ boot.ci(list_boot_theta_ci[[5]], conf=0.95, type=c("norm", "perc", "bca"))
 ### Question 5 Parametric Bootstrap
 
 ```{r}
+# Set parameters
+B = 10000
+n = 50
 
+# Initialize empty vectors
+boot_theta = rep(0, B)
+list_boot_theta = vector('list', 5) # empty list to put results from different seeds into
+
+
+for (seed in 123:127) {
+  set.seed(seed)
+  y_sim = tibble(y1 = rnorm(n, mean = y_true[1], sd = sigma[1,1]), 
+                 y2 = rnorm(n, mean = y_true[2], sd = sigma[2,2]))
+
+  # Get bootstrap se's
+  se_y1 = sd(y_sim$y1)
+  se_y2 = sd(y_sim$y2)
+  
+  # Get bootstrap means
+  mu1 = mean(y_sim$y1)
+  mu2 = mean(y_sim$y2)
+  
+  # Run bootstrap 
+  for (i in 1:B) {
+    y1_b = rnorm(n, mu1, se_y1)
+    y2_b = rnorm(n, mu2, se_y2)
+    
+    # Parameter of interest
+    theta_hat = mean(y1_b) / mean(y2_b)
+    
+    # Store parameters
+    boot_theta[i] = theta_hat
+
+  }
+  list_boot_theta[[seed-122]] = boot_theta # Subtract 122 so the list indexes from 1
+}
+
+# Parameter of interest for each seed
+boot_theta_hat = sapply(1:5, function(i) {mean(list_boot_theta[[i]])})
+boot_se_theta_hat = sapply(1:5, function(i) {sd(list_boot_theta[[i]])});boot_se_theta_hat
+
+# Normal CI
+sapply(1:5, function(i){boot_theta_hat[[i]] + c(-boot_se_theta_hat[[i]], boot_se_theta_hat[[i]])*1.96}) # CIs are read top to bottom. Going left to right are the five samples from 5 different seeds
 ```
 
-
+### Question 6 Table Comparing Results
 
 
 
