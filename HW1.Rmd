@@ -99,7 +99,7 @@ We already calculated the $\hat{V}_{\hat{\theta}}$ in part 1, so we just need to
 ```{r}
 g_mu_hat = c(1/y_true[1], -y_true[1]/y_true[2]) |> matrix()
 varhat_theta_hat = t(g_mu_hat)%*%sigma_hat%*%g_mu_hat
-sehat_theta_hat = sqrt(varhat_theta_hat) 
+sehat_theta_hat_delta = sqrt(varhat_theta_hat) 
 ```
 
 Now check with the delta_method function from the car package.
@@ -274,15 +274,27 @@ for (seed in 123:127) {
 }
 
 # Parameter of interest for each seed
-boot_theta_hat = sapply(1:5, function(i) {mean(list_boot_theta[[i]])})
-boot_se_theta_hat = sapply(1:5, function(i) {sd(list_boot_theta[[i]])});boot_se_theta_hat
+boot_theta_hat_param = sapply(1:5, function(i) {mean(list_boot_theta[[i]])})
+boot_se_theta_hat_param = sapply(1:5, function(i) {sd(list_boot_theta[[i]])});boot_se_theta_hat
 
 # Normal CI
-sapply(1:5, function(i){boot_theta_hat[[i]] + c(-boot_se_theta_hat[[i]], boot_se_theta_hat[[i]])*1.96}) # CIs are read top to bottom. Going left to right are the five samples from 5 different seeds
+sapply(1:5, function(i){boot_theta_hat[[i]] + c(-boot_se_theta_hat[[i]], boot_se_theta_hat[[i]])*1.96}) # CI's are read top to bottom. Going left to right are the five samples from 5 different seeds
 ```
 
 ### Question 6 Table Comparing Results
 
+```{r}
+# Data for table
+results_df = tibble(Type = c("Monte Carlo", "Delta Method", "Jack Knife", 
+                             paste("NonParametric Bootstrap: Seed = ", 123:127, sep =""),
+                             paste("Parametric Bootstrap: Seed = ", 123:127, sep ="")), 
+                    Theta = c(mean_theta_hat, 1, jack_mean, boot_theta_hat,
+                              boot_theta_hat_param),
+                    Standard_Error = c(se_theta_hat, as.numeric(sehat_theta_hat_delta), jack_se,
+                              boot_se_theta_hat, boot_se_theta_hat_param))
+
+results_df
+```
 
 
 
