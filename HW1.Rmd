@@ -60,10 +60,12 @@ mean_theta_hat = mean(sim.theta); mean_theta_hat
 se_theta_hat = sd(sim.theta); se_theta_hat
 
 # Confidence interval of theta_hat
-mean_theta_hat + c(-se_theta_hat, se_theta_hat)*1.96
+ci_mc = mean_theta_hat + c(-se_theta_hat, se_theta_hat)*1.96
 
 # Var cov matrix
 sigma_hat = c(mean(sim.sigma[,1]), rep(mean(sim.sigma[,2]), 2), mean(sim.sigma[,3])) |> matrix(nrow = 2)
+
+
 ```
 
 ### Question 2
@@ -99,7 +101,10 @@ We already calculated the $\hat{V}_{\hat{\theta}}$ in part 1, so we just need to
 ```{r}
 g_mu_hat = c(1/y_true[1], -y_true[1]/y_true[2]) |> matrix()
 varhat_theta_hat = t(g_mu_hat)%*%sigma_hat%*%g_mu_hat
-sehat_theta_hat_delta = sqrt(varhat_theta_hat) 
+sehat_theta_hat_delta = sqrt(varhat_theta_hat) |> as.numeric()
+
+# Confidence interval 
+ci_delta = 1 + c(-sehat_theta_hat_delta, sehat_theta_hat_delta)*1.96
 ```
 
 Now check with the delta_method function from the car package.
@@ -121,9 +126,13 @@ dm$SE # Exact match for the manual computation
 ### Question 3 Jackknife Method
 
 ```{r}
+
 # Simulated data
 y_sim = tibble(y1 = rnorm(n, mean = y_true[1], sd = sigma[1,1]), 
                y2 = rnorm(n, mean = y_true[2], sd = sigma[2,2]))
+
+# Set parameters
+n = nrow(y_sim)
 
 # Initialize values
 n = nrow(y_sim)
@@ -149,10 +158,10 @@ for (i in 1:n){
 
 # Jackknife standard error
 jack_mean = mean(jack_theta)
-jack_se = ((n-1)/n)*sum((jack_theta - theta)^2);jack_se 
+jack_se = ((n-1)/n)*sum((jack_theta - jack_mean)^2) |> sqrt();jack_se 
 
 # Confidence interval
-jack_mean + c(-jack_se, jack_se)*1.96 
+ci_jack = jack_mean + c(-jack_se, jack_se)*1.96 
 
 ```
 
@@ -195,7 +204,7 @@ boot_theta_hat = sapply(1:5, function(i) {mean(list_boot_theta[[i]])})
 boot_se_theta_hat = sapply(1:5, function(i) {sd(list_boot_theta[[i]])});boot_se_theta_hat
 
 # Normal CI
-sapply(1:5, function(i){boot_theta_hat[[i]] + c(-boot_se_theta_hat[[i]], boot_se_theta_hat[[i]])*1.96}) # CIs are read top to bottom. Going left to right are the five samples from 5 different seeds
+ci_boot = sapply(1:5, function(i){boot_theta_hat[[i]] + c(-boot_se_theta_hat[[i]], boot_se_theta_hat[[i]])*1.96}) # CIs are read top to bottom. Going left to right are the five samples from 5 different seeds
 ```
 
 To calculate the other CIs, we will use the boot package
@@ -222,7 +231,7 @@ for (seed in 123:127) {
 }
 
 # All the confidence intervals
-# Im not doing this in a loop because it takes away the nice formatting of the CIs
+# I'm not doing this in a loop because it takes away the nice formatting of the CIs
 boot.ci(list_boot_theta_ci[[1]], conf=0.95, type=c("norm", "perc", "bca"))
 boot.ci(list_boot_theta_ci[[2]], conf=0.95, type=c("norm", "perc", "bca"))
 boot.ci(list_boot_theta_ci[[3]], conf=0.95, type=c("norm", "perc", "bca"))
@@ -278,7 +287,7 @@ boot_theta_hat_param = sapply(1:5, function(i) {mean(list_boot_theta[[i]])})
 boot_se_theta_hat_param = sapply(1:5, function(i) {sd(list_boot_theta[[i]])});boot_se_theta_hat
 
 # Normal CI
-sapply(1:5, function(i){boot_theta_hat[[i]] + c(-boot_se_theta_hat[[i]], boot_se_theta_hat[[i]])*1.96}) # CI's are read top to bottom. Going left to right are the five samples from 5 different seeds
+ci_boot_param = sapply(1:5, function(i){boot_theta_hat[[i]] + c(-boot_se_theta_hat[[i]], boot_se_theta_hat[[i]])*1.96}) # CI's are read top to bottom. Going left to right are the five samples from 5 different seeds
 ```
 
 ### Question 6 Table Comparing Results
@@ -291,12 +300,17 @@ results_df = tibble(Type = c("Monte Carlo", "Delta Method", "Jack Knife",
                     Theta = c(mean_theta_hat, 1, jack_mean, boot_theta_hat,
                               boot_theta_hat_param),
                     Standard_Error = c(se_theta_hat, as.numeric(sehat_theta_hat_delta), jack_se,
-                              boot_se_theta_hat, boot_se_theta_hat_param))
+                              boot_se_theta_hat, boot_se_theta_hat_param),
+                    "CI Lower" = c(ci_mc[1], ci_delta[1], ci_jack[1], ci_boot[1,], 
+                    ci_boot_param[1,]),
+                    "CI_upper" = c(ci_mc[2], ci_delta[2], ci_jack[2], ci_boot[2,], 
+                    ci_boot_param[2,]))
 
 results_df
+
 ```
 
-
+We can see from the table that all the results are very similar. The  bootstrap methods seem to have their means biased downward somewhat, but by a small enough amount that the true value is still well within each confidence interval. All the standard errors are very close to that same true value as well no matter the method or seed. 
 
 
 
