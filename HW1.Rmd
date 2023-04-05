@@ -178,8 +178,8 @@ list_boot_theta = vector('list', 5) # empty list to put results from different s
 boot_test = vector('list', 5)
 # Bootstrap loop
 # Outside loop is to loop over the different seeds
-for (seed in 123:127){
-  set.seed(seed)
+for (seed in 1:5){
+  set.seed(122 + seed)
   y_sim = tibble(y1 = rnorm(n, mean = y_true[1], sd = sigma[1,1]), 
                  y2 = rnorm(n, mean = y_true[2], sd = sigma[2,2]))
   
@@ -196,7 +196,7 @@ for (seed in 123:127){
     boot_theta[i] = mu_hat[1]/mu_hat[2]
     boot_test[[i]] = boot_samp
   }
-  list_boot_theta[[seed-122]] = boot_theta # Subtract 122 so the list indexes from 1
+  list_boot_theta[[seed]] = boot_theta # Subtract 122 so the list indexes from 1
 }
 
 # Parameter of interest for each seed
@@ -221,13 +221,13 @@ fun_theta = function(x, i){
 list_boot_theta_ci = vector('list', 5)
 
 # Loop over the seeds again
-for (seed in 123:127) {
-  set.seed(seed)
+for (seed in 1:5) {
+  set.seed(122 + seed)
   y_sim = tibble(y1 = rnorm(n, mean = y_true[1], sd = sigma[1,1]), 
                  y2 = rnorm(n, mean = y_true[2], sd = sigma[2,2]))
   theta.boot = boot(y_sim, statistic = fun_theta, R = 10000)
   
-  list_boot_theta_ci[[seed-122]] = theta.boot
+  list_boot_theta_ci[[seed]] = theta.boot
 }
 
 # All the confidence intervals
