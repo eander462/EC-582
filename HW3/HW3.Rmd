@@ -1,0 +1,108 @@
+---
+title: "HW 3"
+output: html_document
+date: '2023-04-18'
+---
+
+# Question 12.22 From Hansen Econometrics
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      cache = TRUE)
+options(digits=2)
+```
+
+```{r}
+# Load packages
+pacman::p_load(tidyverse, magrittr, here, haven, magrittr, AER, fixest)
+
+# Load data
+ajr_df = read_dta(here("/Users/johannaallen/Documents/Erik/EC 581", 
+                       "AJR2001/AJR2001.dta"))
+```
+
+### Part a)
+
+```{r}
+# Estimate 12.86 loggdp = b0 + b1risk
+reg1 = ajr_df %>% lm(loggdp ~ risk,.) |>  summary()
+
+# Estimate 12.87 risk = b0 + b1 logmortality
+reg2 = ajr_df %>% lm(risk ~ logmort0,.) 
+# Get the fitted values
+risk_fitted = reg2$fitted.values
+reg2 = summary(reg2)
+
+# Estimate 12.88 logGdp = b0 + risk with risk now endogenous
+reg3 = lm(ajr_df$loggdp ~ risk_fitted) |>  summary()
+
+```
+
+### Part b)
+
+```{r}
+# Restimate the above with both homoskedastic and heteroskedastic standard errors. The fixest package allows me to do this automatically
+reg1_het = ajr_df %>% feols(loggdp ~ risk,., vcov = "HC1")
+reg2_het = ajr_df %>% feols(risk ~ logmort0,., vcov = "HC1")
+reg3_het = ajr_df %>% feols(loggdp ~ 1 | risk ~ logmort0,., vcov = "HC1")
+
+# Compare SE's for 12.86
+reg1$coefficients[2,2]; reg1_het$se[2] # Homoskedastic se's are reported
+
+# 12.87
+reg2$coefficients[2,2]; reg2_het$se[2] # Homoskedastic se's are reported
+
+# 12.88
+reg3$coefficients[2,2]; reg3_het$se[2] # Homoskedastic se's are reported
+```
+
+### Part c) 
+
+```{r}
+# Estimate 2SLS with indirect least squares
+# First estimate effect of instrument on outcome
+reg4 = ajr_df %>% lm(loggdp ~ logmort0,.) |> summary()
+
+# Then divide that effect by effect of instrument on endogenous variable found in reg2
+reg4$coefficients[2,1] / reg2$coefficients[2,1] # The same as part b
+```
+
+
+### Part d)
+
+```{r}
+# Estimate 2SLS with two stage approach
+reg1 = ajr_df %>% lm(loggdp ~ risk,.) |>  summary()
+reg2 = ajr_df %>% lm(risk ~ logmort0,.) ;risk_fitted = reg2$fitted.values
+reg3 = lm(ajr_df$loggdp ~ risk_fitted) |>  summary() ; reg3 # Same as before
+```
+
+### Part e)
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
