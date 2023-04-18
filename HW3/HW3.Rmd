@@ -72,20 +72,39 @@ reg4$coefficients[2,1] / reg2$coefficients[2,1] # The same as part b
 
 ```{r}
 # Estimate 2SLS with two stage approach
-reg1 = ajr_df %>% lm(loggdp ~ risk,.) |>  summary()
-reg2 = ajr_df %>% lm(risk ~ logmort0,.) ;risk_fitted = reg2$fitted.values
-reg3 = lm(ajr_df$loggdp ~ risk_fitted) |>  summary() ; reg3 # Same as before
+reg_2sls = ivreg(loggdp ~ risk | logmort0, data = ajr_df)
+coef(reg_2sls)[2] # Same as before
 ```
 
 ### Part e)
 
 ```{r}
+# Get error terms from 2SLS regression and add them to data set
+uhat2 = residuals(reg_2sls)
 
+ajr_df %<>% mutate(uhat2 = uhat2)
+
+# Run control variable approach
+reg_control = ajr_df %>% lm(loggdp ~ risk + logmort0 + uhat2,.)
+coef(reg_control)[2]  #Same as before
 ```
 
+### Part f)
 
+```{r}
+# Add latitude and africa as regressors
+reg_africa = ajr_df %>% lm(loggdp ~ risk + latitude + africa,.)
+summary(reg_africa) # Africa is significant at any alpha level, lattitude is only significant at the 10% level
+```
 
+### Part g)
 
+```{r}
+reg_africa_2sls = ivreg(loggdp ~ risk + africa + latitude | logmort0 + africa + latitude, data = ajr_df)
+summary(reg_africa_2sls) # Africa and latitude are not longer significant
+```
+
+### Part h)
 
 
 

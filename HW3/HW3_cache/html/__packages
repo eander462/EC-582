@@ -11,3 +11,11 @@ lubridate
 magrittr
 here
 haven
+carData
+car
+zoo
+lmtest
+sandwich
+survival
+AER
+fixest

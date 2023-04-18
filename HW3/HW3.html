@@ -361,8 +361,10 @@ pre code {
 </div>
 
 
+<div id="question-12.22-from-hansen-econometrics" class="section level1">
+<h1>Question 12.22 From Hansen Econometrics</h1>
 <pre class="r"><code># Load packages
-pacman::p_load(tidyverse, magrittr, here, haven, magrittr)
+pacman::p_load(tidyverse, magrittr, here, haven, magrittr, AER, fixest)
 
 # Load data
 ajr_df = read_dta(here(&quot;/Users/johannaallen/Documents/Erik/EC 581&quot;, 
@@ -370,14 +372,75 @@ ajr_df = read_dta(here(&quot;/Users/johannaallen/Documents/Erik/EC 581&quot;,
 <div id="part-a" class="section level3">
 <h3>Part a)</h3>
 <pre class="r"><code># Estimate 12.86 loggdp = b0 + b1risk
-ajr_df %&gt;% lm(loggdp ~ risk,.)</code></pre>
+reg1 = ajr_df %&gt;% lm(loggdp ~ risk,.) |&gt;  summary()
+
+# Estimate 12.87 risk = b0 + b1 logmortality
+reg2 = ajr_df %&gt;% lm(risk ~ logmort0,.) 
+# Get the fitted values
+risk_fitted = reg2$fitted.values
+reg2 = summary(reg2)
+
+# Estimate 12.88 logGdp = b0 + risk with risk now endogenous
+reg3 = lm(ajr_df$loggdp ~ risk_fitted) |&gt;  summary()</code></pre>
+</div>
+<div id="part-b" class="section level3">
+<h3>Part b)</h3>
+<pre class="r"><code># Restimate the above with both homoskedastic and heteroskedastic standard errors. The fixest package allows me to do this automatically
+reg1_het = ajr_df %&gt;% feols(loggdp ~ risk,., vcov = &quot;HC1&quot;)
+reg2_het = ajr_df %&gt;% feols(risk ~ logmort0,., vcov = &quot;HC1&quot;)
+reg3_het = ajr_df %&gt;% feols(loggdp ~ 1 | risk ~ logmort0,., vcov = &quot;HC1&quot;)
+
+# Compare SE&#39;s for 12.86
+reg1$coefficients[2,2]; reg1_het$se[2] # Homoskedastic se&#39;s are reported</code></pre>
+<pre><code>## [1] 0.063</code></pre>
+<pre><code>##  risk 
+## 0.051</code></pre>
+<pre class="r"><code># 12.87
+reg2$coefficients[2,2]; reg2_het$se[2] # Homoskedastic se&#39;s are reported</code></pre>
+<pre><code>## [1] 0.13</code></pre>
+<pre><code>## logmort0 
+##     0.15</code></pre>
+<pre class="r"><code># 12.88
+reg3$coefficients[2,2]; reg3_het$se[2] # Homoskedastic se&#39;s are reported</code></pre>
+<pre><code>## [1] 0.13</code></pre>
+<pre><code>## fit_risk 
+##     0.17</code></pre>
+</div>
+<div id="part-c" class="section level3">
+<h3>Part c)</h3>
+<pre class="r"><code># Estimate 2SLS with indirect least squares
+# First estimate effect of instrument on outcome
+reg4 = ajr_df %&gt;% lm(loggdp ~ logmort0,.) |&gt; summary()
+
+# Then divide that effect by effect of instrument on endogenous variable found in reg2
+reg4$coefficients[2,1] / reg2$coefficients[2,1] # The same as part b</code></pre>
+<pre><code>## [1] 0.93</code></pre>
+</div>
+<div id="part-d" class="section level3">
+<h3>Part d)</h3>
+<pre class="r"><code># Estimate 2SLS with two stage approach
+reg_2sls = ivreg(loggdp ~ risk | logmort0, data = ajr_df)
+coef(reg_2sls)[2] # Same as before</code></pre>
+<pre><code>## risk 
+## 0.93</code></pre>
+</div>
+<div id="part-e" class="section level3">
+<h3>Part e)</h3>
+<pre class="r"><code># Get error terms from 2SLS regression and add them to data set
+uhat2 = residuals(reg_2sls)
+
+ajr_df %&lt;&gt;% mutate(uhat2 = uhat2)
+
+# Run control variable approach
+reg_control = ajr_df %&gt;% lm(loggdp ~ risk + logmort0 + uhat2,.); reg_control</code></pre>
 <pre><code>## 
 ## Call:
-## lm(formula = loggdp ~ risk, data = .)
+## lm(formula = loggdp ~ risk + logmort0 + uhat2, data = .)
 ## 
 ## Coefficients:
-## (Intercept)         risk  
-##       4.687        0.516</code></pre>
+## (Intercept)         risk     logmort0        uhat2  
+##    1.99e+00     9.29e-01     5.24e-17     1.00e+00</code></pre>
+</div>
 </div>
 
 
