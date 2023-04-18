@@ -364,7 +364,7 @@ pre code {
 <div id="question-12.22-from-hansen-econometrics" class="section level1">
 <h1>Question 12.22 From Hansen Econometrics</h1>
 <pre class="r"><code># Load packages
-pacman::p_load(tidyverse, magrittr, here, haven, magrittr, AER, fixest)
+pacman::p_load(tidyverse, magrittr, here, haven, magrittr, AER, fixest, cragg, ivmodel)
 
 # Load data
 ajr_df = read_dta(here(&quot;/Users/johannaallen/Documents/Erik/EC 581&quot;, 
@@ -429,17 +429,201 @@ coef(reg_2sls)[2] # Same as before</code></pre>
 <pre class="r"><code># Get error terms from 2SLS regression and add them to data set
 uhat2 = residuals(reg_2sls)
 
-ajr_df %&lt;&gt;% mutate(uhat2 = uhat2)
+ajr_df = mutate(ajr_df, uhat2 = uhat2)
 
 # Run control variable approach
-reg_control = ajr_df %&gt;% lm(loggdp ~ risk + logmort0 + uhat2,.); reg_control</code></pre>
+reg_control = ajr_df %&gt;% lm(loggdp ~ risk + logmort0 + uhat2,.)
+coef(reg_control)[2]  #Same as before</code></pre>
+<pre><code>## risk 
+## 0.93</code></pre>
+</div>
+<div id="part-f" class="section level3">
+<h3>Part f)</h3>
+<pre class="r"><code># Add latitude and africa as regressors
+(reg_africa = ajr_df %&gt;% lm(loggdp ~ risk + latitude + africa,.))</code></pre>
 <pre><code>## 
 ## Call:
-## lm(formula = loggdp ~ risk + logmort0 + uhat2, data = .)
+## lm(formula = loggdp ~ risk + latitude + africa, data = .)
 ## 
 ## Coefficients:
-## (Intercept)         risk     logmort0        uhat2  
-##    1.99e+00     9.29e-01     5.24e-17     1.00e+00</code></pre>
+## (Intercept)         risk     latitude       africa  
+##       5.652        0.377        1.382       -0.723</code></pre>
+<pre class="r"><code> # Africa is significant at any alpha level, lattitude is only significant at the 10% level</code></pre>
+</div>
+<div id="part-g" class="section level3">
+<h3>Part g)</h3>
+<pre class="r"><code>(reg_africa_2sls = ivreg(loggdp ~ risk + africa + latitude | logmort0 + africa + latitude, data = ajr_df))</code></pre>
+<pre><code>## 
+## Call:
+## ivreg(formula = loggdp ~ risk + africa + latitude | logmort0 +     africa + latitude, data = ajr_df)
+## 
+## Coefficients:
+## (Intercept)         risk       africa     latitude  
+##      2.9951       0.8000      -0.3479      -0.0553</code></pre>
+<pre class="r"><code># Africa and latitude are not longer significant</code></pre>
+</div>
+<div id="part-h" class="section level3">
+<h3>Part h)</h3>
+<pre class="r"><code># Add exponential of mortality to data
+ajr_df = mutate(ajr_df, mortality0 = exp(logmort0))
+
+# Run baseline regresssion with mortality
+(reg_mortality = ivreg(loggdp ~ risk | mortality0, data = ajr_df))</code></pre>
+<pre><code>## 
+## Call:
+## ivreg(formula = loggdp ~ risk | mortality0, data = ajr_df)
+## 
+## Coefficients:
+## (Intercept)         risk  
+##       0.489        1.161</code></pre>
+<p>The authors prefered log mortality because it has an easier
+interpretation than this level of mortality.</p>
+</div>
+<div id="part-i" class="section level3">
+<h3>Part i)</h3>
+<pre class="r"><code># Add square root to data set
+ajr_df = mutate(ajr_df, mortsquare = logmort0^2)
+
+(reg_square = ivreg(loggdp ~ risk | mortality0 + mortsquare, data = ajr_df))</code></pre>
+<pre><code>## 
+## Call:
+## ivreg(formula = loggdp ~ risk | mortality0 + mortsquare, data = ajr_df)
+## 
+## Coefficients:
+## (Intercept)         risk  
+##       1.934        0.939</code></pre>
+<pre class="r"><code> # The result is back to the same result as earlier for risk</code></pre>
+</div>
+<div id="part-j" class="section level3">
+<h3>Part j)</h3>
+<pre class="r"><code>stock_yogo_test(X =~ 1, D =~ risk, Z =~ mortality0 + mortsquare, B = 0.1,size_bias = &quot;size&quot;, data = ajr_df)</code></pre>
+<pre><code>## Results of Stock and Yogo test for weak instruments:
+## 
+##      Null Hypothesis:             Instruments are weak 
+##      Alternative Hypothesis:      Instruments are not weak 
+## 
+##      Data:                        ajr_df     
+##      Controls:                    ~1 
+##      Treatments:                  ~risk 
+##      Instruments:                 ~mortality0 + mortsquare 
+## 
+##      Alpha:                             0.05 
+##      Acceptable level of bias:    10% Wald test distortion.
+##      Critical Value:                      20 
+## 
+##      Cragg-Donald Statistic:              11 
+##      Df:                                  61</code></pre>
+<p>The instruments are weak</p>
+</div>
+<div id="part-k" class="section level3">
+<h3>Part k)</h3>
+<pre class="r"><code>summary(reg_square, vcov = sandwich, diagnostics = TRUE)</code></pre>
+<pre><code>## 
+## Call:
+## ivreg(formula = loggdp ~ risk | mortality0 + mortsquare, data = ajr_df)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -2.4275 -0.5506  0.0837  0.7034  1.7147 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)    1.934      1.128    1.71    0.092 .  
+## risk           0.939      0.169    5.55  6.3e-07 ***
+## 
+## Diagnostic tests:
+##                  df1 df2 statistic p-value    
+## Weak instruments   2  61      8.58 0.00052 ***
+## Wu-Hausman         1  61     18.61   6e-05 ***
+## Sargan             1  NA      0.63 0.42624    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.96 on 62 degrees of freedom
+## Multiple R-Squared: 0.173,   Adjusted R-squared: 0.159 
+## Wald test: 30.8 on 1 and 62 DF,  p-value: 6.34e-07</code></pre>
+<pre class="r"><code>glimpse(ajr_df)</code></pre>
+<pre><code>## Rows: 64
+## Columns: 34
+## $ longname         &lt;chr&gt; &quot;Angola&quot;, &quot;Argentina&quot;, &quot;Australia&quot;, &quot;Burkina Faso&quot;, &quot;…
+## $ shortnam         &lt;chr&gt; &quot;AGO&quot;, &quot;ARG&quot;, &quot;AUS&quot;, &quot;BFA&quot;, &quot;BGD&quot;, &quot;BHS&quot;, &quot;BOL&quot;, &quot;BRA…
+## $ logmort0         &lt;dbl&gt; 5.6, 4.2, 2.1, 5.6, 4.3, 4.4, 4.3, 4.3, 2.8, 4.2, 6.5…
+## $ risk             &lt;dbl&gt; 5.4, 6.4, 9.3, 4.4, 5.1, 7.5, 5.6, 7.9, 9.7, 7.8, 7.0…
+## $ loggdp           &lt;dbl&gt; 7.8, 9.1, 9.9, 6.8, 6.9, 9.3, 7.9, 8.7, 10.0, 9.3, 7.…
+## $ campaign         &lt;dbl&gt; 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1,…
+## $ source0          &lt;dbl&gt; 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0,…
+## $ slave            &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,…
+## $ latitude         &lt;dbl&gt; 0.137, 0.378, 0.300, 0.144, 0.267, 0.268, 0.189, 0.11…
+## $ neoeuro          &lt;dbl&gt; 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+## $ asia             &lt;dbl&gt; 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+## $ africa           &lt;dbl&gt; 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0,…
+## $ other            &lt;dbl&gt; 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+## $ edes1975         &lt;dbl&gt; 0, 90, 99, 0, 0, 10, 30, 55, 98, 50, 0, 0, 0, 25, 20,…
+## $ campaignsj       &lt;dbl&gt; 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1,…
+## $ campaignsj2      &lt;dbl&gt; 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1,…
+## $ mortnaval1       &lt;dbl&gt; 280.0, 15.1, 8.6, 280.0, 71.4, 85.0, NA, 15.1, 16.1, …
+## $ logmortnaval1    &lt;dbl&gt; 5.6, 2.7, 2.1, 5.6, 4.3, 4.4, NA, 2.7, 2.8, 2.7, 6.5,…
+## $ mortnaval2       &lt;dbl&gt; 280.0, 30.5, 8.6, 280.0, 71.4, 85.0, 93.2, 30.5, 16.1…
+## $ logmortnaval2    &lt;dbl&gt; 5.6, 3.4, 2.1, 5.6, 4.3, 4.4, 4.5, 3.4, 2.8, 3.4, 6.5…
+## $ mortjam          &lt;dbl&gt; 280.0, 56.5, 8.6, 280.0, 71.4, 85.0, 56.5, 56.5, 16.1…
+## $ logmortjam       &lt;dbl&gt; 5.6, 4.0, 2.1, 5.6, 4.3, 4.4, 4.0, 4.0, 2.8, 4.0, 6.5…
+## $ logmortcap250    &lt;dbl&gt; 5.5, 4.2, 2.1, 5.5, 4.3, 4.4, 4.3, 4.3, 2.8, 4.2, 5.5…
+## $ logmortjam250    &lt;dbl&gt; 5.5, 4.0, 2.1, 5.5, 4.3, 4.4, 4.0, 4.0, 2.8, 4.0, 5.5…
+## $ wandcafrica      &lt;dbl&gt; 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0,…
+## $ malfal94         &lt;dbl&gt; 0.9500, 0.0000, 0.0000, 0.9500, 0.1201, NA, 0.0016, 0…
+## $ wacacontested    &lt;dbl&gt; 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0,…
+## $ mortnaval2250    &lt;dbl&gt; 250.0, 30.5, 8.6, 250.0, 71.4, 85.0, 93.2, 30.5, 16.1…
+## $ logmortnaval2250 &lt;dbl&gt; 5.5, 3.4, 2.1, 5.5, 4.3, 4.4, 4.5, 3.4, 2.8, 3.4, 5.5…
+## $ mortnaval1250    &lt;dbl&gt; 250.0, 15.1, 8.6, 250.0, 71.4, 85.0, NA, 15.1, 16.1, …
+## $ logmortnaval1250 &lt;dbl&gt; 5.5, 2.7, 2.1, 5.5, 4.3, 4.4, NA, 2.7, 2.8, 2.7, 5.5,…
+## $ uhat2            &lt;dbl&gt; 0.794, 1.196, -0.757, 0.719, 0.108, 0.325, 0.693, -0.…
+## $ mortality0       &lt;dbl&gt; 280.0, 68.9, 8.5, 280.0, 71.4, 85.0, 71.0, 71.0, 16.1…
+## $ mortsquare       &lt;dbl&gt; 31.8, 17.9, 4.6, 31.8, 18.2, 19.7, 18.2, 18.2, 7.7, 1…</code></pre>
+<p>The Wu-Hausaman test is significant so we conclude the instruments
+are exogenous.</p>
+</div>
+<div id="part-j-1" class="section level3">
+<h3>Part j)</h3>
+<pre class="r"><code>glimpse(ajr_df)</code></pre>
+<pre><code>## Rows: 64
+## Columns: 31
+## $ longname         &lt;chr&gt; &quot;Angola&quot;, &quot;Argentina&quot;, &quot;Australia&quot;, &quot;Burkina Faso&quot;, &quot;…
+## $ shortnam         &lt;chr&gt; &quot;AGO&quot;, &quot;ARG&quot;, &quot;AUS&quot;, &quot;BFA&quot;, &quot;BGD&quot;, &quot;BHS&quot;, &quot;BOL&quot;, &quot;BRA…
+## $ logmort0         &lt;dbl&gt; 5.6, 4.2, 2.1, 5.6, 4.3, 4.4, 4.3, 4.3, 2.8, 4.2, 6.5…
+## $ risk             &lt;dbl&gt; 5.4, 6.4, 9.3, 4.4, 5.1, 7.5, 5.6, 7.9, 9.7, 7.8, 7.0…
+## $ loggdp           &lt;dbl&gt; 7.8, 9.1, 9.9, 6.8, 6.9, 9.3, 7.9, 8.7, 10.0, 9.3, 7.…
+## $ campaign         &lt;dbl&gt; 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1,…
+## $ source0          &lt;dbl&gt; 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0,…
+## $ slave            &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,…
+## $ latitude         &lt;dbl&gt; 0.137, 0.378, 0.300, 0.144, 0.267, 0.268, 0.189, 0.11…
+## $ neoeuro          &lt;dbl&gt; 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+## $ asia             &lt;dbl&gt; 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+## $ africa           &lt;dbl&gt; 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0,…
+## $ other            &lt;dbl&gt; 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+## $ edes1975         &lt;dbl&gt; 0, 90, 99, 0, 0, 10, 30, 55, 98, 50, 0, 0, 0, 25, 20,…
+## $ campaignsj       &lt;dbl&gt; 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1,…
+## $ campaignsj2      &lt;dbl&gt; 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1,…
+## $ mortnaval1       &lt;dbl&gt; 280.0, 15.1, 8.6, 280.0, 71.4, 85.0, NA, 15.1, 16.1, …
+## $ logmortnaval1    &lt;dbl&gt; 5.6, 2.7, 2.1, 5.6, 4.3, 4.4, NA, 2.7, 2.8, 2.7, 6.5,…
+## $ mortnaval2       &lt;dbl&gt; 280.0, 30.5, 8.6, 280.0, 71.4, 85.0, 93.2, 30.5, 16.1…
+## $ logmortnaval2    &lt;dbl&gt; 5.6, 3.4, 2.1, 5.6, 4.3, 4.4, 4.5, 3.4, 2.8, 3.4, 6.5…
+## $ mortjam          &lt;dbl&gt; 280.0, 56.5, 8.6, 280.0, 71.4, 85.0, 56.5, 56.5, 16.1…
+## $ logmortjam       &lt;dbl&gt; 5.6, 4.0, 2.1, 5.6, 4.3, 4.4, 4.0, 4.0, 2.8, 4.0, 6.5…
+## $ logmortcap250    &lt;dbl&gt; 5.5, 4.2, 2.1, 5.5, 4.3, 4.4, 4.3, 4.3, 2.8, 4.2, 5.5…
+## $ logmortjam250    &lt;dbl&gt; 5.5, 4.0, 2.1, 5.5, 4.3, 4.4, 4.0, 4.0, 2.8, 4.0, 5.5…
+## $ wandcafrica      &lt;dbl&gt; 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0,…
+## $ malfal94         &lt;dbl&gt; 0.9500, 0.0000, 0.0000, 0.9500, 0.1201, NA, 0.0016, 0…
+## $ wacacontested    &lt;dbl&gt; 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0,…
+## $ mortnaval2250    &lt;dbl&gt; 250.0, 30.5, 8.6, 250.0, 71.4, 85.0, 93.2, 30.5, 16.1…
+## $ logmortnaval2250 &lt;dbl&gt; 5.5, 3.4, 2.1, 5.5, 4.3, 4.4, 4.5, 3.4, 2.8, 3.4, 5.5…
+## $ mortnaval1250    &lt;dbl&gt; 250.0, 15.1, 8.6, 250.0, 71.4, 85.0, NA, 15.1, 16.1, …
+## $ logmortnaval1250 &lt;dbl&gt; 5.5, 2.7, 2.1, 5.5, 4.3, 4.4, NA, 2.7, 2.8, 2.7, 5.5,…</code></pre>
+<pre class="r"><code># # Create IVmodel object
+# ivmod = ivmodel(Y = as.numeric(ajr_df$loggdp), D = as.numeric(ajr_df$risk), Z = ajr_df[, c(&quot;mortality0&quot;, &quot;mortsquare&quot;)])
+# 
+# liml = LIML(ivmod)
+# 
+# liml$point.est</code></pre>
 </div>
 </div>
 
