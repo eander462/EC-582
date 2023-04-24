@@ -1,0 +1,77 @@
+---
+title: "HW4"
+output: html_document
+date: '2023-04-24'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      cache = TRUE)
+```
+
+```{r}
+# Load packages
+pacman::p_load(tidyverse, magrittr, purrr)
+```
+
+
+### Monte Carlos Simulation
+
+```{r}
+# Set parameters
+b = 1
+se = 1
+sv = 1
+p = .99
+l = 4
+n = 100 
+mu_z = rep(0, l)
+Qzz = diag(l)
+```
+
+```{r}
+# Monte-Carlo set-up
+montecarlo = function(N, gamma){
+  # Coerce gamma to right shape
+  gamma = t(gamma)
+  # Compute V_beta^hat
+  v_beta_hat = solve(t(gamma) %*% gamma)
+  
+  map(1:N, function(i){
+    # Simulate z's
+    z = mvrnorm(n, mu_z, Qzz)
+    
+    # Simulate errors
+    e_v = mvrnorm(n, rep(0, 2), matrix(c(se^2, rep(p, 2), se^2), ncol = 2))
+    
+    # Create x's
+    x = z %*% gamma + e_v[,2]
+  })
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
