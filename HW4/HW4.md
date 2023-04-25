@@ -1,0 +1,120 @@
+---
+title: "HW4"
+date: '2023-04-24'
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    keep_md: yes
+---
+
+
+
+
+```r
+# Load packages
+pacman::p_load(tidyverse, ivreg, ivmodel)
+```
+
+
+### Monte Carlos Simulation
+
+
+```r
+# Set parameters
+b = 1
+se = 1
+sv = 1
+p = .99
+l = 4
+n = 100 
+mu_z = rep(0, l)
+Qzz = diag(l)
+```
+
+
+```r
+# Monte-Carlo function set-up
+montecarlo = function(N, gamma){
+  # Create empty vectors to put values into
+  sim.beta = rep(NA, N)
+  sim.se = rep(NA, N)
+  t_stat = rep(NA, N)
+  ci_lower = rep(NA, N)
+  ci_upper = rep(NA, N)
+  and_rub = rep(NA, N)
+  
+  # Montecarlo loop. This will output all the statistics the question asked for
+  for (sim in 1:N){
+    # Simulate z's
+    z = mvrnorm(n, mu_z, Qzz)
+    # Simulate errors
+    e_v = mvrnorm(n, rep(0, 2), matrix(c(se^2, rep(p, 2), se^2), ncol = 2))
+    
+    # Create x's
+    x = z %*% gamma + e_v[,2]
+    # Create y's
+    y = x %*% b + e_v[,1]
+    
+    # Calculate 2SLS
+    tsls = ivreg(y ~ x | z)
+    
+    # Store values of interest from regression
+    sim.beta[sim] = coef(tsls)[2] 
+    sim.se[sim] = broom::tidy(tsls)[2,3] |> as.numeric()
+    
+    # Calculate t-stat
+    t_stat[sim] = (sim.beta[sim] - b) / sim.se[sim]
+    
+    # Calculate confidence interval
+    ci_lower[sim] = sim.beta[sim] - 1.96*sim.se[sim]
+    ci_upper[sim] = sim.beta[sim] + 1.96*sim.se[sim]
+    
+    # Create z projection matrix for use in anderson-rubin stat
+    pz = z %*% solve(t(z)%*%z)%*%t(z)
+    
+    # IVmodel object for anderson-rubin function
+    iv = ivmodel(y, x, z)
+    
+    # Calculate anderson-rubin stat
+    test = AR.test(iv, beta0 = 1)
+    and_rub[sim] = test$Fstat
+    
+    # Store sensibly
+    tsls_output = tibble(beta = sim.beta, 
+                         se = sim.se,
+                         t_stat = t_stat,
+                         ci_lower = ci_lower,
+                         ci_uppwer = ci_upper,
+                         anderson_rubin = and_rub)
+    }
+  return(tsls_output)
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
