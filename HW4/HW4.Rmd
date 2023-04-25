@@ -5,7 +5,7 @@ output:
   html_document:
     toc: true
     toc_float: true
-    toc_depth: 4
+    toc_depth: 5
     keep_md: yes
   pdf_document:
     toc: true
@@ -15,10 +15,10 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
                       cache = TRUE)
-options(digits = 2)
+options(digits = 4)
 ```
 
-```{r}
+```{r packages}
 # Load packages
 pacman::p_load(tidyverse, ivreg, ivmodel, magrittr, ggplot2, MASS)
 
@@ -37,10 +37,10 @@ l = 4
 n = 100 
 mu_z = rep(0, l)
 Qzz = diag(l)
-N = 15
+N = 10000
 ```
 
-```{r montecarlo, dependson=-1}
+```{r montecarlo, dependson="parameters"}
 # Monte-Carlo function set-up
 montecarlo = function(N, gamma){
   # Create empty vectors to put values into
@@ -114,7 +114,7 @@ montecarlo = function(N, gamma){
 
 #### Irrelevant Instruments
 
-```{r dependson=c(-1,-2)}
+```{r irrelevant-instruments, dependson=c("parameters", "montecarlo")}
 # Gamma is all zeros
 gamma = rep(0, 4)
 
@@ -147,9 +147,31 @@ size_t_irr = sum(irrelevant$t_decision) / N
 size_ar_irr = sum(irrelevant$ar_decision) / N
 ```
 
+##### Printout of results
+```{r dependson="irrelevant-instruments"}
+head(irrelevant, 15)
+```
+
+
+##### Part 1: Histogram of beta hat 2SLS
+```{r fig.align='left', dependson="irrelevant-instruments"}
+irrelevant_b
+```
+
+##### Part 2: Bias 
+For the irrelevant instruments case, the bias is equal to `r bias_irrelevant`.
+
+##### Part 3: Histogram of T-Statistics
+```{r fig.align='left', message=FALSE, warning=FALSE, dependson="irrelevant-instruments"}
+irrelevant_t
+```
+
+##### Part 4: Empirical Size of T-Test
+The empirical size of the t-test is `r size_t_irr`, while for the Anderson-Rubin test it is `r size_ar_irr`
+
 #### Weak Instruments
 
-```{r dependson=c(-2,-3)}
+```{r weak-instruments, dependson=c("parameters", "montecarlo")}
 # Gamma is 0.1 and then zeros
 gamma = c(0.1, rep(0, 3))
 v_beta_hat = solve(t(gamma)%*%gamma)
@@ -186,9 +208,31 @@ size_t_weak = sum(weak$t_decision) / N
 size_ar_weak = sum(weak$ar_decision) / N
 ```
 
+##### Printout of results
+```{r dependson="weak-instruments"}
+head(weak, 15)
+```
+
+
+##### Part 1: Histogram of beta hat 2SLS
+```{r fig.align='left',dependson="weak-instruments"}
+weak_b
+```
+
+##### Part 2: Bias 
+For the weak instruments case, the bias is equal to `r bias_weak`.
+
+##### Part 3: Histogram of T-Statistics
+```{r fig.align='left', message=FALSE, warning=FALSE,dependson="weak-instruments"}
+weak_t
+```
+
+##### Part 4: Empirical Size of T-Test
+The empirical size of the t-test is `r size_t_weak`, while for the Anderson-Rubin test it is `r size_ar_weak`
+
 #### Strong Instruments
 
-```{r dependson=c(-3,-4)}
+```{r strong-instruments, dependson=c("parameters", "montecarlo")}
 # Gamma is 1 then zeros
 gamma = c(1, rep(0, 3))
 v_beta_hat = solve(t(gamma)%*%gamma)
@@ -225,7 +269,27 @@ size_t_strong = sum(strong$t_decision) / N
 size_ar_strong = sum(strong$ar_decision) / N
 ```
 
-### Results
+##### Printout of results
+```{r dependson="strong-instruments"}
+head(strong, 15)
+```
+
+
+##### Part 1: Histogram of beta hat 2SLS
+```{r fig.align='left',dependson="strong-instruments"}
+strong_b
+```
+
+##### Part 2: Bias 
+For the strong instruments case, the bias is equal to `r bias_strong`.
+
+##### Part 3: Histogram of T-Statistics
+```{r fig.align='left', message=FALSE, warning=FALSE,dependson="strong-instruments"}
+strong_t
+```
+
+##### Part 4: Empirical Size of T-Test
+The empirical size of the t-test is `r size_t_strong`, while for the Anderson-Rubin test it is `r size_ar_strong`
 
 
 
