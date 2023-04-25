@@ -5,7 +5,11 @@ output:
   html_document:
     toc: true
     toc_float: true
+    toc_depth: 4
     keep_md: yes
+  pdf_document:
+    toc: true
+  always_allow_html: true
 ---
 
 ```{r setup, include=FALSE}
@@ -16,7 +20,7 @@ options(digits = 2)
 
 ```{r}
 # Load packages
-pacman::p_load(tidyverse, ivreg, ivmodel, magrittr, ggplot2)
+pacman::p_load(tidyverse, ivreg, ivmodel, magrittr, ggplot2, MASS)
 
 ```
 
@@ -33,10 +37,10 @@ l = 4
 n = 100 
 mu_z = rep(0, l)
 Qzz = diag(l)
-N = 1000
+N = 15
 ```
 
-```{r montecarlo}
+```{r montecarlo, dependson=-1}
 # Monte-Carlo function set-up
 montecarlo = function(N, gamma){
   # Create empty vectors to put values into
@@ -110,7 +114,7 @@ montecarlo = function(N, gamma){
 
 #### Irrelevant Instruments
 
-```{r cache.extra = montecarlo}
+```{r dependson=c(-1,-2)}
 # Gamma is all zeros
 gamma = rep(0, 4)
 
@@ -145,7 +149,7 @@ size_ar_irr = sum(irrelevant$ar_decision) / N
 
 #### Weak Instruments
 
-```{r cache.extra = montecarlo}
+```{r dependson=c(-2,-3)}
 # Gamma is 0.1 and then zeros
 gamma = c(0.1, rep(0, 3))
 v_beta_hat = solve(t(gamma)%*%gamma)
@@ -159,11 +163,12 @@ weak_b = weak |> ggplot(aes(x = beta)) +
   geom_histogram(data = data.frame(x = rnorm(N, b, sqrt(v_beta_hat/N))),
                  aes(x = x), fill = 'red', alpha = 0.5) + 
   labs(x = "B 2SLS", y = "", title = "Distribution of 2SLS with Weak Instruments",
+       subtitle = "Asymptotic Distribution in Red",
        caption = "Gamma = (0.1,0,0,0)\', N = 10,000") +
   cowplot::theme_cowplot()
 
 # Calculate the bias
-bias_weak = mean(strong$beta) - b
+bias_weak = mean(weak$beta) - b
 
 # Histogram of t-stats
 weak_t = weak |> ggplot(aes(x = t_stat)) + 
@@ -183,7 +188,7 @@ size_ar_weak = sum(weak$ar_decision) / N
 
 #### Strong Instruments
 
-```{r cache.extra = montecarlo}
+```{r dependson=c(-3,-4)}
 # Gamma is 1 then zeros
 gamma = c(1, rep(0, 3))
 v_beta_hat = solve(t(gamma)%*%gamma)
@@ -197,10 +202,11 @@ strong_b = strong |> ggplot(aes(x = beta)) +
   geom_histogram(data = data.frame(x = rnorm(N, b, sqrt(v_beta_hat/N))),
                  aes(x = x), fill = 'red', alpha = 0.5) + 
   labs(x = "B 2SLS", y = "", title = "Distribution of 2SLS with Strong Instruments",
+       subtitle = "Asymptotic Distribution in Red",
        caption = "Gamma = (1,0,0,0)\', N = 10,000") +
   cowplot::theme_cowplot()
 
-h# Calculate the bias
+# Calculate the bias
 bias_strong = mean(strong$beta) - b
 
 # Histogram of t-stats
@@ -218,6 +224,8 @@ size_t_strong = sum(strong$t_decision) / N
 # Empirical size of Anderson-Rubin test
 size_ar_strong = sum(strong$ar_decision) / N
 ```
+
+### Results
 
 
 
