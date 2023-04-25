@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE,
 
 ```{r}
 # Load packages
-pacman::p_load(tidyverse, magrittr, purrr)
+pacman::p_load(tidyverse, magrittr, purrr, ivreg)
 ```
 
 
@@ -32,21 +32,35 @@ Qzz = diag(l)
 ```{r}
 # Monte-Carlo set-up
 montecarlo = function(N, gamma){
-  # Coerce gamma to right shape
-  gamma = t(gamma)
+  # Create empty vectors to put values into
+  sim.beta = rep(NA, N)
+  sim.se = rep(NA, N)
+
   # Compute V_beta^hat
   v_beta_hat = solve(t(gamma) %*% gamma)
   
-  map(1:N, function(i){
+    for (sim in 1:N){
     # Simulate z's
     z = mvrnorm(n, mu_z, Qzz)
-    
     # Simulate errors
     e_v = mvrnorm(n, rep(0, 2), matrix(c(se^2, rep(p, 2), se^2), ncol = 2))
     
     # Create x's
     x = z %*% gamma + e_v[,2]
-  })
+    # Create y's
+    y = x %*% b + e_v[,1]
+    
+    # Calculate 2SLS
+    tsls = ivreg(y ~ x | z)
+    
+    # Store values of interest from regression
+    sim.beta[sim] = coef(tsls)[2] 
+    sim.se[sim] = broom::tidy(tsls)[2,3] |> as.numeric()
+    
+    # Store sensibly
+    tsls_output = tibble(beta = sim.beta, se = sim.se)
+    }
+  return(tsls_output)
 }
 ```
 
