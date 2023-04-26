@@ -1,5 +1,5 @@
 ---
-title: "HW 3"
+title: "HW 4 pt2"
 output:
   pdf_document: default
   html_document: default
@@ -16,16 +16,15 @@ options(digits=2)
 
 ```{r}
 # Load packages
-pacman::p_load(tidyverse, magrittr, here, haven, magrittr, AER, fixest, cragg, ivmodel)
+pacman::p_load(tidyverse, magrittr, here, haven, magrittr, AER, fixest, cragg, ivmodel, momentfit)
 
 # Load data
-ajr_df = read_dta(here("/Users/johannaallen/Documents/Erik/EC 581", 
-                       "AJR2001/AJR2001.dta"))
+ajr_df = read_dta(here("AJR2001/AJR2001.dta"))
 ```
 
 ### Part a)
 
-```{r}
+```{r include=FALSE}
 # Estimate 12.86 loggdp = b0 + b1risk
 reg1 = ajr_df %>% lm(loggdp ~ risk,.) |>  summary()
 
@@ -42,7 +41,7 @@ reg3 = lm(ajr_df$loggdp ~ risk_fitted) |>  summary()
 
 ### Part b)
 
-```{r}
+```{r include=FALSE}
 # Restimate the above with both homoskedastic and heteroskedastic standard errors. The fixest package allows me to do this automatically
 reg1_het = ajr_df %>% feols(loggdp ~ risk,., vcov = "HC1")
 reg2_het = ajr_df %>% feols(risk ~ logmort0,., vcov = "HC1")
@@ -60,7 +59,7 @@ reg3$coefficients[2,2]; reg3_het$se[2] # Homoskedastic se's are reported
 
 ### Part c) 
 
-```{r}
+```{r include=FALSE}
 # Estimate 2SLS with indirect least squares
 # First estimate effect of instrument on outcome
 reg4 = ajr_df %>% lm(loggdp ~ logmort0,.) |> summary()
@@ -72,7 +71,7 @@ reg4$coefficients[2,1] / reg2$coefficients[2,1] # The same as part b
 
 ### Part d)
 
-```{r}
+```{r include=FALSE}
 # Estimate 2SLS with two stage approach
 reg_2sls = ivreg(loggdp ~ risk | logmort0, data = ajr_df)
 coef(reg_2sls)[2] # Same as before
@@ -80,7 +79,7 @@ coef(reg_2sls)[2] # Same as before
 
 ### Part e)
 
-```{r}
+```{r include=FALSE} 
 # Get error terms from 2SLS regression and add them to data set
 uhat2 = residuals(reg_2sls)
 
@@ -93,7 +92,7 @@ coef(reg_control)[2]  #Same as before
 
 ### Part f)
 
-```{r}
+```{r include=FALSE}
 # Add latitude and africa as regressors
 (reg_africa = ajr_df %>% lm(loggdp ~ risk + latitude + africa,.))
  # Africa is significant at any alpha level, lattitude is only significant at the 10% level
@@ -101,14 +100,14 @@ coef(reg_control)[2]  #Same as before
 
 ### Part g)
 
-```{r}
+```{r include=FALSE}
 (reg_africa_2sls = ivreg(loggdp ~ risk + africa + latitude | logmort0 + africa + latitude, data = ajr_df))
 # Africa and latitude are not longer significant
 ```
 
 ### Part h)
 
-```{r}
+```{r include=FALSE}
 # Add exponential of mortality to data
 ajr_df = mutate(ajr_df, mortality0 = exp(logmort0))
 
@@ -116,11 +115,10 @@ ajr_df = mutate(ajr_df, mortality0 = exp(logmort0))
 (reg_mortality = ivreg(loggdp ~ risk | mortality0, data = ajr_df))
 ```
 
-The authors prefered log mortality because it has an easier interpretation than this level of mortality. 
 
 ### Part i)
 
-```{r}
+```{r include=FALSE}
 # Add square root to data set
 ajr_df = mutate(ajr_df, mortsquare = logmort0^2)
 
@@ -130,23 +128,21 @@ ajr_df = mutate(ajr_df, mortsquare = logmort0^2)
 
 ### Part j)
 
-```{r}
+```{r include=FALSE}
 stock_yogo_test(X =~ 1, D =~ risk, Z =~ mortality0 + mortsquare, B = 0.1,size_bias = "size", data = ajr_df)
 ```
 
-The instruments are weak
 
 ### Part k)
 
-```{r}
+```{r include=FALSE}
 summary(reg_square, vcov = sandwich, diagnostics = TRUE)
 ```
 
-The Wu-Hausaman test is significant so we conclude the instruments are exogenous.
 
 ### Part j)
 
-```{r}
+```{r include=FALSE}
 # Create IVmodel object
 ivmod = ivmodel(Y = as.numeric(ajr_df$loggdp), D = as.numeric(ajr_df$risk), Z = ajr_df[, c("mortality0", "mortsquare")])
 
@@ -155,8 +151,18 @@ liml = LIML(ivmod)
 liml$point.est
 ```
 
+```{r}
+# Efficient Gmm
+gmm_mod = gmm4(loggdp ~ risk, ~ mortality0 + mortsquare, type = 'twostep', vcov = 'MDS', initW = "tsls", data = ajr_df)
 
+summary(gmm_mod)
+```
 
+See above for estimates, standard errors. 
+
+The J statistic is 0.64
+
+The GMM, and 2SLS are basically identical.
 
 
 
