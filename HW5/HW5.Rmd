@@ -1,0 +1,116 @@
+---
+title: "HW 5"
+output:
+  pdf_document: default
+  html_document: default
+date: '2023-05-15'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      cache = TRUE)
+
+# Load packages
+pacman::p_load(forecast)
+```
+
+
+### 1)
+
+```{r}
+# Set parameters
+n = 250
+
+# Set seed
+set.seed(123)
+
+# Generate white noise. e ~ N(0,1)
+ep = rnorm(n, 0, 1)
+
+# Generate the AR(2) sequence
+y = rep(NA, n+2)
+y = as.ts(y)
+y[1] = 31.25 # Use fixed point as starting seed
+y[2] = 31.25
+
+# Simulate sequene
+for (sim in 3:n){
+  y[sim] = 2.5 + 1.1*y[sim-1] - 0.18*y[sim-2] + ep[sim]
+}
+
+# Get rid of starting seed
+y = y[-c(1,2)] |> as.ts()
+
+# Plot the sequence
+plot(y, col = 'blue', main = 'Simulated AR(2) Sequence')
+```
+
+It looks covariance stationary since the sequence stays around fairly steady, and doesn't expload in value. 
+
+### 2)
+
+```{r}
+# Vector of coefficients for AR(2) sequence
+poly_y = c(1, -1.1, 0.18)
+
+# Calculate the roots
+(roots = polyroot(poly_y))
+
+# Companion F matrix
+f_matrix = matrix(c(1.1, -.18, 1, 0), nrow = 2, ncol = 2, byrow = TRUE)
+
+# Calculate eigenvalues
+(eigen_values = eigen(f_matrix)$value)
+```
+
+Both roots are outside the complex unit circle, `r Re(roots[1])` and `r Re(roots[2])`, so the processs is stationary. 
+
+### 3)
+
+```{r}
+# Calculate the unconditional mean
+(mean_y = 2.5/(1 -1.1 +0.18))
+
+# Put mean on graph
+plot(y, col = 'blue', main = 'Simulated AR(2) Sequence')
+abline(h = mean_y, col = 'red')
+```
+
+### 4)
+
+```{r}
+# Calculate theorertical autocorrelations
+(theo_acf = ARMAacf(ar = c(1.1, -0.18), ma = 0, lag.max = 10))
+
+# Plot them
+plot(theo_acf, type = 'h', main = 'Theoretical ACF', ylab = 'ACF', xlab = 'Lags')
+
+# Plot sample ACF
+Acf(y, lag.max = 10)
+```
+
+### 5)
+
+```{r}
+# Convert to moving average
+(irf_y = ARMAtoMA(ar = c(1.1, -0.18), ma = 0, lag.max = 10))
+
+# Plot IRF
+plot(irf_y, type = 'h', main = 'IRF', ylab = 'Impulse Responce', xlab = 'Lab')
+```
+
+The IRF is very similar to the ACF, but the differ by a bit. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
