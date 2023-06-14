@@ -292,6 +292,9 @@ strong_t
 The empirical size of the t-test is `r size_t_strong`, while for the Anderson-Rubin test it is `r size_ar_strong`
 
 
+```{r}
+ldkjaf;ds
+```
 
 
 

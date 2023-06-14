@@ -1,0 +1,118 @@
+---
+title: "HW6"
+output:
+  pdf_document: default
+  html_document: default
+date: '2023-05-23'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r}
+# Load packages
+pacman::p_load(dynlm, sandwich, lmtest, here)
+```
+
+### 2)
+
+```{r}
+# Set parameters
+mu = 1
+phi = 0.75
+sigma = 1
+n = 500
+
+# Set seed and simulate process
+set.seed(101)
+y = mu + arima.sim(model = list(ar = phi), n = n)
+
+# Using formula derived in handwritten notes, calculate long run variance
+(LRV = sigma^2/(1-phi)^2)
+# Calculate standard error
+(se = sqrt(LRV/n))
+```
+
+### 3)
+
+```{r}
+# Fit AR(1) model
+ar1 = dynlm(y ~ L(y,1))
+summary(ar1)
+
+# Calculate fitted parameters
+phi_hat = ar1$coefficients[2]
+sigma_hat = mean(ar1$residuals^2)
+
+# Use these to calculate LRV
+(LRV_hat = sigma_hat^2/(1-phi)^2)
+
+# Calculate standard error
+(se_hat = sqrt(LRV/n))
+
+```
+
+### 5)
+
+```{r}
+# Regress y on a constant to calculate newey-west standard errors
+new = dynlm(y ~ 1)
+
+# Calculate newey-west se
+(newey = coeftest(new, vcov=NeweyWest(new, prewhite=FALSE)))
+(se_new = newey[2])
+
+# Calculate LRV using these ses
+(LRV_new = 500*se_new^2)
+```
+
+## Hansen 14.20
+
+### a 
+
+```{r}
+# Load data
+fred_df = haven::read_dta(here("HW6", "FRED-MD.dta"))
+# Make unemployment rate convenient time series
+unrate = ts(fred_df$unrate, frequency=12, start=1959)
+
+# Function for calculating various lengths of AR models and their AICs
+ar_sim = function(p){
+  mod = dynlm(unrate ~ L(unrate, 1:p), start=c(1960,1)) # p is number of lags
+  aic = AIC(mod)
+  return(list(mod, aic))
+}
+
+# Calculate for 1 through 8 lags
+(models = lapply(1:8, ar_sim))
+```
+
+### b
+
+```{r}
+# Print AICs
+(aic = sapply(1:8, function(x){models[[x]][[2]]}))
+```
+
+### c
+
+```{r}
+# Find minimum AIC
+which.min(aic) # the AR(7) model has the lowest AIC
+```
+
+### d
+
+```{r}
+summary(dynlm(unrate ~ L(unrate, 1:7), start=c(1960,1)))
+```
+
+
+
+
+
+
+
+
